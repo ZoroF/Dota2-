@@ -7,8 +7,18 @@
 //
 
 #import "DetailTableViewController.h"
+#import "AbilityTableViewCell.h"
+#import "BioTableViewCell.h"
+#import <UIImageView+WebCache.h>
 
-@interface DetailTableViewController ()
+@interface DetailTableViewController () {
+    NSString *docPath;
+}
+
+@property NSURL *heroFullImageURL;
+@property NSString *heroBio;
+@property NSMutableDictionary *abilityList;
+@property (weak, nonatomic) IBOutlet UIImageView *heroFullImageView;
 
 @end
 
@@ -22,6 +32,29 @@
     
     // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
     // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+    
+    docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0];
+    
+    // Full Image
+    self.heroFullImageURL = [NSURL URLWithString:[NSString stringWithFormat:@"http://cdn.dota2.com.cn/apps/dota2/images/heroes/%@_vert.jpg",self.heroName]];
+    [self.heroFullImageView sd_setImageWithURL:self.heroFullImageURL];
+    
+    // Bio
+    self.heroBio = [NSDictionary dictionaryWithContentsOfFile:[docPath stringByAppendingPathComponent:@"DetailData.plist"]][self.heroName][@"bio"];
+    
+    // Ability
+    NSDictionary *allAbility = [NSDictionary dictionaryWithContentsOfFile:[docPath stringByAppendingPathComponent:@"AbilityData.plist"]];
+    self.abilityList = [NSMutableDictionary dictionary];
+    
+    for (NSString *name in allAbility) {
+        if ([name hasPrefix:[self.heroName stringByAppendingString:@"_"]]) {
+            [self.abilityList setObject:allAbility[name] forKey:name];
+        }
+    }
+    
+    // UI
+    self.tableView.estimatedRowHeight = 100;
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
 }
 
 - (void)didReceiveMemoryWarning {
@@ -31,27 +64,46 @@
 
 #pragma mark - Table view data source
 
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    if (section == 0) {
+        return @"Ability";
+    } else {
+        return @"Bio";
+    }
+}
+
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-#warning Potentially incomplete method implementation.
     // Return the number of sections.
-    return 0;
+    return 2;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-#warning Incomplete method implementation.
     // Return the number of rows in the section.
-    return 0;
+    if (section == 0) {
+        return self.abilityList.count;
+    } else {
+        return 1;
+    }
 }
 
-/*
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
-    
-    // Configure the cell...
-    
-    return cell;
+    if (indexPath.section == 0) {
+        AbilityTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"AbilityCell" forIndexPath:indexPath];
+        cell.abilityNameLabel.text = self.abilityList[[self.abilityList allKeys][indexPath.row]][@"dname"];
+        cell.abilityDetailLabel.text = self.abilityList[[self.abilityList allKeys][indexPath.row]][@"desc"];
+        cell.abilityDetailLabel.numberOfLines = 0;
+        
+        NSURL *abilityImageURL = [NSURL URLWithString:[NSString stringWithFormat:@"http://cdn.dota2.com/apps/dota2/images/abilities/%@_hp1.png", [self.abilityList allKeys][indexPath.row]]];
+        [cell.abilityImageView sd_setImageWithURL:abilityImageURL];
+        
+        return cell;
+    } else {
+        BioTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"BioCell" forIndexPath:indexPath];
+        cell.textLabel.text = self.heroBio;
+        cell.textLabel.numberOfLines = 0;
+        return cell;
+    }
 }
-*/
 
 /*
 // Override to support conditional editing of the table view.

@@ -10,4 +10,6 @@
 
 @interface DetailTableViewController : UITableViewController
 
+@property NSString *heroName;
+
 @end

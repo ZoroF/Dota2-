@@ -7,12 +7,84 @@
 //
 
 #import "MasterTableViewController.h"
+#import "DetailTableViewController.h"
+#import "HeroTableViewCell.h"
+#import <UIImageView+WebCache.h>
 
-@interface MasterTableViewController ()
+#define kAPI_KEY @"BA0C45177F92DFC588FBC26777AFDD5C"
+
+@interface MasterTableViewController () {
+    NSString *docPath;
+}
+
+@property NSArray *heroList;
+@property NSURLSession *session;
+@property NSDictionary *heroesDetail;
 
 @end
 
 @implementation MasterTableViewController
+
+- (void)fetchHeroesListData {
+    NSURL *apiURL = [NSURL URLWithString:[NSString stringWithFormat:@"http://api.steampowered.com/IEconDOTA2_570/GetHeroes/v0001/?key=%@&language=zh_cn", kAPI_KEY]];
+    
+        NSURLSessionDataTask *dataTask = [self.session dataTaskWithURL:apiURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+        self.heroList = json[@"result"][@"heroes"];
+        [self.heroList writeToFile:[docPath stringByAppendingPathComponent:@"ListData.plist"] atomically:YES];
+        
+        dispatch_async(dispatch_get_main_queue(), ^{[self.tableView reloadData];});
+    }];
+    [dataTask resume];
+}
+
+- (void)fetchHeroesDetailData {
+    NSURL *apiURL = [NSURL URLWithString:@"http://www.dota2.com/jsfeed/heropickerdata"];
+    
+    NSURLSessionDataTask *dataTask = [self.session dataTaskWithURL:apiURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        self.heroesDetail = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+        [self.heroesDetail writeToFile:[docPath stringByAppendingPathComponent:@"DetailData.plist"] atomically:YES];
+    }];
+    [dataTask resume];
+}
+
+- (void)fetchHeroAbilityData {
+    NSURL *apiURL = [NSURL URLWithString:@"http://www.dota2.com/jsfeed/abilitydata"];
+    
+    NSURLSessionDataTask *dataTask = [self.session dataTaskWithURL:apiURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        NSDictionary *abilityData = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil][@"abilitydata"];
+        [abilityData writeToFile:[docPath stringByAppendingPathComponent:@"AbilityData.plist"] atomically:YES];
+    }];
+    [dataTask resume];
+}
+
+- (void)setupDataSource {
+    if ([[NSFileManager defaultManager]fileExistsAtPath:[docPath stringByAppendingPathComponent:@"ListData.plist"]]) {
+        self.heroList = [NSArray arrayWithContentsOfFile:[docPath stringByAppendingPathComponent:@"ListData.plist"]];
+    } else {
+        [self fetchHeroesListData];
+    }
+    
+    if ([[NSFileManager defaultManager]fileExistsAtPath:[docPath stringByAppendingPathComponent:@"DetailData.plist"]]) {
+        self.heroesDetail = [NSDictionary dictionaryWithContentsOfFile:[docPath stringByAppendingPathComponent:@"DetailData.plist"]];
+    } else {
+        [self fetchHeroesDetailData];
+    }
+    
+    if ([[NSFileManager defaultManager]fileExistsAtPath:[docPath stringByAppendingPathComponent:@"AbilityData.plist"]]) {
+        
+    } else {
+        [self fetchHeroAbilityData];
+    }
+}
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    if ([segue.identifier isEqualToString:@"TODETAIL"]) {
+        DetailTableViewController *detailVC = [segue destinationViewController];
+        NSString *selectedHero = [self.heroList[self.tableView.indexPathForSelectedRow.row][@"name"]stringByReplacingOccurrencesOfString:@"npc_dota_hero_" withString:@""];
+        detailVC.heroName = selectedHero;
+    }
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -22,6 +94,13 @@
     
     // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
     // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+    
+    self.session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    
+    docPath = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES)[0];
+
+    self.title = @"Dota 2 Heropedia";
+    [self setupDataSource];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -32,26 +111,30 @@
 #pragma mark - Table view data source
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-#warning Potentially incomplete method implementation.
     // Return the number of sections.
-    return 0;
+    return 1;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-#warning Incomplete method implementation.
     // Return the number of rows in the section.
-    return 0;
+    return self.heroList.count;
 }
 
-/*
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+    HeroTableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell" forIndexPath:indexPath];
     
     // Configure the cell...
+
+    NSString *realName = [self.heroList[indexPath.row][@"name"] stringByReplacingOccurrencesOfString:@"npc_dota_hero_" withString:@""];
+    NSString *urlStr = [NSString stringWithFormat:@"http://cdn.dota2.com.cn/apps/dota2/images/heroes/%@_full.png", realName];
+    [cell.iconImageView sd_setImageWithURL:[NSURL URLWithString:urlStr]];
+    
+    cell.nameLabel.text = self.heroList[indexPath.row][@"localized_name"];
+    cell.typeLabel.text = self.heroesDetail[realName][@"atk_l"];
     
     return cell;
 }
-*/
 
 /*
 // Override to support conditional editing of the table view.
