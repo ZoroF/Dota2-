@@ -1,5 +1,5 @@
 //
-//  ViewController.h
+//  MasterTableViewController.h
 //  Dota2Heros
 //
 //  Created by Zoro on 15/9/17.
@@ -8,8 +8,6 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
-
+@interface MasterTableViewController : UITableViewController
 
 @end
-
