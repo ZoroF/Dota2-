@@ -25,15 +25,22 @@
 
 @implementation MasterTableViewController
 
-- (void)fetchHeroesListData {
-    NSURL *apiURL = [NSURL URLWithString:[NSString stringWithFormat:@"http://api.steampowered.com/IEconDOTA2_570/GetHeroes/v0001/?key=%@&language=zh_cn", kAPI_KEY]];
+- (IBAction)fetchHeroesListData {
+    [self.refreshControl beginRefreshing];
+    
+    NSURL *apiURL = [NSURL URLWithString:[NSString stringWithFormat:@"https://api.steampowered.com/IEconDOTA2_570/GetHeroes/v0001/?key=%@&language=zh_cn", kAPI_KEY]];
     
         NSURLSessionDataTask *dataTask = [self.session dataTaskWithURL:apiURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
-        self.heroList = json[@"result"][@"heroes"];
-        [self.heroList writeToFile:[docPath stringByAppendingPathComponent:@"ListData.plist"] atomically:YES];
-        
-        dispatch_async(dispatch_get_main_queue(), ^{[self.tableView reloadData];});
+            NSLog(@"%@",data);
+            if (data) {
+                NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+                self.heroList = json[@"result"][@"heroes"];
+                [self.heroList writeToFile:[docPath stringByAppendingPathComponent:@"ListData.plist"] atomically:YES];
+                
+                [self.refreshControl endRefreshing];
+                
+                dispatch_async(dispatch_get_main_queue(), ^{[self.tableView reloadData];});
+            }
     }];
     [dataTask resume];
 }
@@ -42,8 +49,10 @@
     NSURL *apiURL = [NSURL URLWithString:@"http://www.dota2.com/jsfeed/heropickerdata"];
     
     NSURLSessionDataTask *dataTask = [self.session dataTaskWithURL:apiURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        self.heroesDetail = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
-        [self.heroesDetail writeToFile:[docPath stringByAppendingPathComponent:@"DetailData.plist"] atomically:YES];
+        if (data) {
+            self.heroesDetail = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+            [self.heroesDetail writeToFile:[docPath stringByAppendingPathComponent:@"DetailData.plist"] atomically:YES];
+        }
     }];
     [dataTask resume];
 }
@@ -52,8 +61,10 @@
     NSURL *apiURL = [NSURL URLWithString:@"http://www.dota2.com/jsfeed/abilitydata"];
     
     NSURLSessionDataTask *dataTask = [self.session dataTaskWithURL:apiURL completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-        NSDictionary *abilityData = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil][@"abilitydata"];
-        [abilityData writeToFile:[docPath stringByAppendingPathComponent:@"AbilityData.plist"] atomically:YES];
+        if (data) {
+            NSDictionary *abilityData = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil][@"abilitydata"];
+            [abilityData writeToFile:[docPath stringByAppendingPathComponent:@"AbilityData.plist"] atomically:YES];
+        }
     }];
     [dataTask resume];
 }
